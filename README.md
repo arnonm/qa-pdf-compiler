@@ -37,6 +37,7 @@ python pdf_compiler.py --directory <dir> --sw_version <ver> --doc_version <ver> 
 | `--doc_number` | `-dn` | Document number (required); shown on the TOC page (e.g. `IFU-1234567`) |
 | `--ifu_version` | `-ifu` | IFU version (required); substituted as `{{ifu_version}}` on the cover |
 | `--template` | `-t` | Cover Markdown file (default: `template.md` next to the script) |
+| `--toc` | `-T` | Table of contents HTML template (default: `toc.md` next to the script) |
 | `--output` | `-o` | Output PDF path (default: `<directory>/merged_<doc_version>.pdf`) |
 
 ### Example
@@ -73,9 +74,14 @@ Example: `IFU StimAI 1.0 en.pdf` → language `en` → TOC shows **English** (vi
 
 Page numbering in the TOC assumes: page 1 = cover, page 2 = TOC, page 3 = start of the first language PDF.
 
-## Template
+## Templates
 
-Edit `template.md` (Markdown) for the cover. The script injects values into the HTML before WeasyPrint renders to PDF.
+- **Cover** – Edit `template.md` (Markdown). Placeholders: `{{sw_version}}`, `{{ifu_version}}`, etc., as in your file.
+- **Table of contents** – Edit `toc.md` (HTML document with optional Markdown around it). The script replaces:
+  - `{{table_rows}}` – generated table body (`<tr>…</tr>` per language)
+  - `{{doc_number}}`, `{{doc_version}}`, `{{sw_version}}`, `{{ifu_version}}`
+
+Override paths with `--template` / `-t` and `--toc` / `-T`.
 
 ## Tests
 

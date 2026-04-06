@@ -227,58 +227,34 @@ def template_md_to_pdf(template_path: Path, sw_version: str, doc_version: str, i
 
 
 def toc_to_pdf(
-    toc_entries: list[tuple[str, str, int]], sw_version: str, doc_version: str, ifu_version: str, doc_number: str, output_path: Path
-) -> None:  
-    """Generate a TOC PDF page. toc_entries: (document_name, doc_number, lang_iso_code, version, page_number).
-    Generate in HTML and convert to PDF. Used to generate the table of contents page.
+    toc_entries: list[tuple[str, str, int]],
+    toc_template_path: Path,
+    sw_version: str,
+    doc_version: str,
+    ifu_version: str,
+    doc_number: str,
+    output_path: Path,
+) -> None:
+    """Generate a TOC PDF from ``toc.md`` (HTML + placeholders) via WeasyPrint.
+
+    ``toc_entries``: (document_name, lang_iso_code, page_number) per row.
+    Template placeholders: ``{{table_rows}}``, ``{{doc_number}}``, ``{{doc_version}}``,
+    ``{{sw_version}}``, ``{{ifu_version}}``.
     """
     rows = []
-    for doc_name, lang_code, page_num in toc_entries:
+    for _doc_name, lang_code, page_num in toc_entries:
         lang_display = language_code_to_full_name(lang_code)
         rows.append(
             f"<tr><td>{lang_display}</td><td class=\"page-num\"><span class=\"page-link\">{page_num}</span></td></tr>"
         )
     table_rows = "\n".join(rows)
-    html = f"""
-    <!DOCTYPE html>
-    <style>
-        @page {{
-            size: letter;
-        }}
-    </style>
-    <html>
-    <head>
-        <meta charset="utf-8">
-        <style>
-            body {{ font-family: sans-serif; margin: 2em; }}
-            h1 {{ font-size: 1.5em; }}
-            table {{ border-collapse: collapse; width: 100%; margin-top: 1em; }}
-            th, td {{ border: 1px solid #333; padding: 8px; text-align: left; }}
-            th {{ background: #eee; }}
-            td:nth-child(5) {{ text-align: right; }}
-            td.page-num .page-link {{ color: #00f; text-decoration: underline; }}
-        </style>
-    </head>
-    <body>
-        <h1>Table of Contents</h1>
-        <p>Select your preferred language below. Each link will take you to the complete Instructions for Use (IFU) in that language.</p>
-        <hr>
-        <br>
-        <table>
-            <thead><tr><th>Document</th><th>Page</th></tr></thead>
-            <tbody>{table_rows}</tbody>
-        </table>
-        <hr>
-        <p>Each language section contains a complete and independent version of the IFU. <br>
-        All language versions are equivalent in content and differ only by translation.</p>
-        <hr>
-        <br>
-        <p>Document Number: {doc_number}<br>
-        Document Version: {doc_version}</p>
-    </body>
-    </html>
-    """
-    HTML(string=html).write_pdf(output_path)
+    text = toc_template_path.read_text(encoding="utf-8")
+    text = text.replace("{{table_rows}}", table_rows)
+    text = text.replace("{{doc_number}}", doc_number)
+    text = text.replace("{{doc_version}}", doc_version)
+    text = text.replace("{{sw_version}}", sw_version)
+    text = text.replace("{{ifu_version}}", ifu_version)
+    HTML(string=text, base_url=str(toc_template_path.parent)).write_pdf(output_path)
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -318,7 +294,15 @@ def parse_arguments() -> argparse.Namespace:
         "--template", "-t",
         type=Path,
         default=None,
-        help="Path to template .md file (default: template.md in script directory)",
+        help="Path to cover template .md file (default: template.md in script directory)",
+    )
+    parser.add_argument(
+        "--toc",
+        "-T",
+        type=Path,
+        default=None,
+        dest="toc_template",
+        help="Path to TOC template .md file (default: toc.md in script directory)",
     )
     parser.add_argument(
         "--output", "-o",
@@ -362,6 +346,11 @@ def main() -> None:
         print(f"Error: Template not found: {template_path}", file=sys.stderr)
         sys.exit(1)
 
+    toc_template_path = (args.toc_template or script_dir / "toc.md").resolve()
+    if not toc_template_path.is_file():
+        print(f"Error: TOC template not found: {toc_template_path}", file=sys.stderr)
+        sys.exit(1)
+
     # Scan PDFs and extract version from header, language from filename
     # Exit if no valid PDFs are found
     # Retired = scanning the pdf file name instead for the langage
@@ -403,7 +392,7 @@ def main() -> None:
 
 
     ifu_version = args.ifu_version if args.ifu_version is not None else None
-    if doc_version is None:
+    if ifu_version is None:
         print("Error: IFU Version is required.", file=sys.stderr)
         sys.exit(1)
         
@@ -439,7 +428,15 @@ def main() -> None:
         template_md_to_pdf(template_path, sw_version, doc_version, ifu_version, doc_number, cover_pdf)
 
         print("Generating TOC...")
-        toc_to_pdf(toc_entries, sw_version, doc_version, ifu_version, doc_number, toc_pdf_path)
+        toc_to_pdf(
+            toc_entries,
+            toc_template_path,
+            sw_version,
+            doc_version,
+            ifu_version,
+            doc_number,
+            toc_pdf_path,
+        )
 
         print("Merging PDFs...")
         writer = PdfWriter()
