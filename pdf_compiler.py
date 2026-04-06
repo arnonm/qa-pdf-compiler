@@ -25,8 +25,8 @@ from iso639_names import language_code_to_full_name
 # TOC table layout for link rects (PDF points: 72 pt = 1 inch, origin bottom-left)
 # Approximate: body margin 2em ~ 48pt, h1 + margin ~ 80pt, row height ~ 24pt
 # Rects span full body width so clicking anywhere on the row activates the link
-TOC_TABLE_TOP = 660
 TOC_ROW_HEIGHT = 24
+TOC_TABLE_TOP = 660 -  4 * TOC_ROW_HEIGHT
 TOC_LEFT = 72  # 1 inch margin
 TOC_RIGHT = 72 * 7.5  # ~7.5 inch (A4 width 595pt - margin)
 LETTER_W, LETTER_H = 612, 792
